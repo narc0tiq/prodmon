@@ -1,7 +1,7 @@
 
 local my_combi = table.deepcopy(data.raw["constant-combinator"]["constant-combinator"])
 my_combi.name = "test-combinator"
-my_combi.item_slot_count = 1
+my_combi.item_slot_count = 0
 my_combi.sprites =
 {
     north =
