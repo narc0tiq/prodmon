@@ -1,3 +1,4 @@
+require("signals")
 
 local events = {}
 
@@ -37,13 +38,13 @@ local function name_that_signal(signal)
 end
 
 
-local function update_data(player)
+local function update_data(player, tick)
     local root = player.gui.left.prodmon
     if not root then return end
 
     if root.data and root.data.valid then root.data.destroy() end
 
-    local data = root.add{type="table", name="data", colspan=4, style="YARM_site_table"}
+    local data = root.add{type="table", name="data", colspan=5, style="YARM_site_table"}
 
     if not global.active_combinator then return end
 
@@ -56,6 +57,9 @@ local function update_data(player)
             data.add{type="label", caption=s.signal.type}
             data.add{type="label", caption=name_that_signal(s.signal)}
             data.add{type="label", caption=s.count}
+
+            signals.add_sample(tick, s)
+            data.add{type="label", caption=signals.rate_of_change(s.signal)}
         end
     end
     if green_network and green_network.signals then
@@ -64,17 +68,21 @@ local function update_data(player)
             data.add{type="label", caption=s.signal.type}
             data.add{type="label", caption=name_that_signal(s.signal)}
             data.add{type="label", caption=s.count}
+
+            signals.add_sample(tick, s)
+            data.add{type="label", caption=signals.rate_of_change(s.signal)}
         end
     end
 end
 
 
 function events.on_tick(e)
-    if e.tick % 20 ~= 11 then return end
+    if e.tick % 120 ~= 11 then return end
 
     for _, player in pairs(game.players) do
-        update_data(player)
+        update_data(player, e.tick)
     end
+
 end
 
 
@@ -84,7 +92,7 @@ function events.on_gui_click(e)
     if not player.gui.left.prodmon then
         local root = player.gui.left.add{type="frame", name="prodmon", direction="horizontal", style="outer_frame_style"}
 
-        root.add{type="label", caption="PM"}
+        root.add{type="label", caption="PM", style="prodmon_ident"}
 
         local buttons = root.add{type="flow",
                             name="buttons",
@@ -95,7 +103,11 @@ function events.on_gui_click(e)
         buttons.add{type="button", name="prodmon_ores", style="YARM_expando_short", tooltip="Show ores"}
     end
 
-    update_data(player)
+    update_data(player, e.tick)
+
+    if e.element.name == "prodmon_ores" then
+        signals.show_debug_state(player)
+    end
 end
 
 

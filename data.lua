@@ -47,3 +47,9 @@ my_combi_item.name = "test-combinator"
 my_combi_item.place_result = "test-combinator"
 
 data:extend{ my_combi, my_combi_item }
+
+data.raw["gui-style"].default.prodmon_ident = {
+    type = "label_style",
+    parent = "label_style",
+    font = "default-small-semibold",
+}
