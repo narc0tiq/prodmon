@@ -1,4 +1,5 @@
 require("signals")
+require("gui")
 
 local events = {}
 
@@ -13,7 +14,10 @@ end
 
 function events.on_player_mined_entity(e)
     if e.entity.name == "test-combinator" then
+
         if e.entity == global.active_combinator then
+            gui.remove_data_rows("red")
+            gui.remove_data_rows("green")
             global.active_combinator = nil
         end
 
@@ -23,91 +27,57 @@ function events.on_player_mined_entity(e)
 end
 
 
-local function name_that_signal(signal)
-    local proto = { localised_name = string.format("Error: unknown signal type '%s'", signal.type) }
-
-    if signal.type == "item" then
-        proto = game.item_prototypes[signal.name]
-    elseif signal.type == "fluid" then
-        proto = game.fluid_prototypes[signal.name]
-    elseif signal.type == "virtual" then
-        proto = game.virtual_signal_prototypes[signal.name]
-    end
-
-    return proto.localised_name
-end
-
-
-local function update_data(player, tick)
-    local root = player.gui.left.prodmon
-    if not root then return end
-
-    if root.data and root.data.valid then root.data.destroy() end
-
-    local data = root.add{type="table", name="data", colspan=5, style="YARM_site_table"}
-
+local function update_signals(tick)
+    log("Update signals")
     if not global.active_combinator then return end
+
+    log("Have active combi")
 
     local red_network = global.active_combinator.get_circuit_network(defines.wire_type.red)
     local green_network = global.active_combinator.get_circuit_network(defines.wire_type.green)
 
-    if red_network and red_network.signals then
-        for _, s in pairs(red_network.signals) do
-            data.add{type="label", caption="red"}
-            data.add{type="label", caption=s.signal.type}
-            data.add{type="label", caption=name_that_signal(s.signal)}
-            data.add{type="label", caption=s.count}
+    gui.remove_data_rows("red")
+    log("remove reds")
+    gui.remove_data_rows("green")
+    log("remove greens")
 
+    if red_network and red_network.signals then
+        log("have red network")
+        for _, s in pairs(red_network.signals) do
             signals.add_sample(tick, s)
-            data.add{type="label", caption=signals.rate_of_change(s.signal)}
+            gui.set_data_row("red", s)
+            log("add red "..s.signal.name)
         end
     end
     if green_network and green_network.signals then
+        log("have green network")
         for _, s in pairs(green_network.signals) do
-            data.add{type="label", caption="green"}
-            data.add{type="label", caption=s.signal.type}
-            data.add{type="label", caption=name_that_signal(s.signal)}
-            data.add{type="label", caption=s.count}
-
             signals.add_sample(tick, s)
-            data.add{type="label", caption=signals.rate_of_change(s.signal)}
+            gui.set_data_row("green", s)
+            log("add green "..s.signal.name)
         end
     end
 end
 
 
 function events.on_tick(e)
-    if e.tick % 120 ~= 11 then return end
-
-    for _, player in pairs(game.players) do
-        update_data(player, e.tick)
+    if e.tick % 300 == 11 then
+        update_signals(e.tick)
     end
 
+    if e.tick % 120 == 11 then
+        for _, player in pairs(game.players) do
+            gui.update_display(player)
+        end
+    end
 end
 
 
 function events.on_gui_click(e)
     local player = game.players[e.player_index]
 
-    if not player.gui.left.prodmon then
-        local root = player.gui.left.add{type="frame", name="prodmon", direction="horizontal", style="outer_frame_style"}
-
-        root.add{type="label", caption="PM", style="prodmon_ident"}
-
-        local buttons = root.add{type="flow",
-                            name="buttons",
-                            direction="vertical",
-                            style="YARM_buttons"}
-
-        buttons.add{type="button", name="prodmon_all", style="YARM_expando_long", tooltip="Show all signals"}
-        buttons.add{type="button", name="prodmon_ores", style="YARM_expando_short", tooltip="Show ores"}
-    end
-
-    update_data(player, e.tick)
-
-    if e.element.name == "prodmon_ores" then
-        signals.show_debug_state(player)
-    end
+    gui.create(player)
+    gui.update_display(player)
 end
 
 

@@ -1,18 +1,24 @@
 
-local MAX_HISTORY_COUNT = 7
+local MAX_HISTORY_COUNT = 13
 
 signals = {
     history = {
-        item = {},
+        item = {
+--            ["iron-ore"] = {
+--                samples = {
+--                    { tick = 0, value = 120 },
+--                    { tick = 60, value = 60 },
+--                    { tick = 120, value = 0 },
+--                }
+--            }
+        },
         fluid = {},
         virtual = {},
     },
 }
 
 
-local function get_samples_array(sig_id)
-    log(serpent.block(signals.history))
-    log(serpent.block(sig_id))
+local function get_samples_root(sig_id)
     if not signals.history[sig_id.type] then
         signals.history[sig_id.type] = {}
     end
@@ -21,12 +27,49 @@ local function get_samples_array(sig_id)
         hist[sig_id.name] = { samples = {} }
     end
 
-    return hist[sig_id.name].samples
+    return hist[sig_id.name]
+end
+
+
+local function calculate_rate_of_change(signal_id)
+    local samples = get_samples_root(signal_id).samples
+
+    if #samples < 2 then return end
+    local change_rates = {} -- per minute
+
+    for i = 1, (#samples - 1) do
+        local difference = samples[i].value - samples[#samples].value
+        local timespan = samples[#samples].tick - samples[i].tick
+
+        log(string.format("Weight %d, difference %d, timespan %d, unweighted change %f/min",
+            #samples - i,
+            difference,
+            timespan,
+            difference * 60 * 60 / timespan))
+        change_rates[i] = (#samples - i) * difference * 60 * 60 / timespan
+    end
+
+    local change_sum = 0
+    for i,v in ipairs(change_rates) do
+        change_sum = change_sum + v
+    end
+    local sum_weights = #change_rates * (#change_rates + 1) / 2
+
+    log(string.format("Sum of changes %f, Num samples %d, sum weights %d, New rate of change: %f", change_sum, #change_rates, sum_weights, change_sum / sum_weights))
+
+    -- rate * ups * sec-per-min
+    get_samples_root(signal_id).rate_of_change_per_min = -(change_sum / sum_weights)
 end
 
 
 function signals.add_sample(tick, live)
-    local samples = get_samples_array(live.signal)
+    local samples = get_samples_root(live.signal).samples
+
+--    if samples[#samples] and samples[#samples].value == live.count then
+--        log(string.format("Ignoring duplicate value %d for %s", live.count, live.signal.name))
+--        return
+--    end
+
     local new_sample = { tick = tick, value = live.count }
     table.insert(samples, new_sample)
     log(string.format("New sample: t:%s, n:%s, t:%d, v:%d", live.signal.type, live.signal.name, tick, live.count))
@@ -35,51 +78,16 @@ function signals.add_sample(tick, live)
         table.remove(samples, 1)
         log(string.format("Removed oldest sample (have %d, want %d).", #samples, MAX_HISTORY_COUNT))
     end
+
+    calculate_rate_of_change(live.signal)
 end
 
 
 function signals.rate_of_change(signal_id)
-    local samples = get_samples_array(signal_id)
-
-    if #samples < MAX_HISTORY_COUNT then return "Insufficient Data" end
-    local old = 0
-    for i = 1, (MAX_HISTORY_COUNT - 1) do
-        old = old + samples[i].value
-    end
-    local new = 0
-    for i = 2, MAX_HISTORY_COUNT do
-        new = new + samples[i].value
+    if get_samples_root(signal_id).rate_of_change_per_min == nil then
+        return {"prodmon.insufficient-data"}
     end
 
-    if not signals.history[signal_id.type][signal_id.name].last_tick_change then
-        signals.history[signal_id.type][signal_id.name].last_tick_change = new - old
-        return "Almost ready, one more update..."
-    end
-
-    local last_tick_change = signals.history[signal_id.type][signal_id.name].last_tick_change
-    signals.history[signal_id.type][signal_id.name].last_tick_change = new - old
-
-    return (last_tick_change + (new - old)) / 2
-end
-
-
-function signals.show_debug_state(player)
-    if player.gui.left.prodmon_debug then
-        player.gui.left.prodmon_debug.destroy()
-    end
-
-    local debug_table = player.gui.left.add{ type="table", name="prodmon_debug", colspan=3 }
-
-    for type, names in pairs(signals.history) do
-        for name, samples in pairs(names) do
-            debug_table.add{ type="label", caption=type }
-            debug_table.add{ type="label", caption=name }
-
-            local accu = {}
-            for _, sample in ipairs(samples) do
-                table.insert(accu, string.format("%d: %d", sample.tick, sample.value))
-            end
-            debug_table.add{ type="label", caption=table.concat(accu, ", ") }
-        end
-    end
+    return {"prodmon.rate-of-change-per-min",
+        string.format("%.2f", get_samples_root(signal_id).rate_of_change_per_min)}
 end

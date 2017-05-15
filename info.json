@@ -1,10 +1,10 @@
 {
-  "name": "test-mod",
-  "version": "0.0.1",
+  "name": "prodmon",
+  "version": "0.1.0",
   "factorio_version": "0.15",
-  "title": "Test-mod",
+  "title": "ProdMon -- Production Monitor",
   "author": "Octav \"narc\" Sandulescu",
   "contact": "factorio-mods@narc.ro",
-  "description": "The testiest mod.",
-  "dependencies": ["base >= 0.15.0", "EvoGUI >= 0.4.0"]
+  "description": "Provides a quick overview of anything circuit-connectable.",
+  "dependencies": ["base >= 0.15.0", "YARM >= 0.7.0"]
 }
