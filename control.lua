@@ -1,6 +1,7 @@
 require("combinators")
 require("signals")
 require("gui")
+require("remote")
 
 local events = {}
 

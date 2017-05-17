@@ -58,7 +58,15 @@ local function calculate_rate_of_change(signal_id)
     log(string.format("Sum of changes %f, Num samples %d, sum weights %d, New rate of change: %f", change_sum, #change_rates, sum_weights, change_sum / sum_weights))
 
     -- rate * ups * sec-per-min
-    get_samples_root(signal_id).rate_of_change_per_min = -(change_sum / sum_weights)
+    local rate_of_change = -(change_sum / sum_weights)
+    get_samples_root(signal_id).rate_of_change_per_min = rate_of_change
+
+    if rate_of_change >= 0 then
+        get_samples_root(signal_id).estimated_to_depletion = nil
+    else
+        -- time to deplete: last sample / decay rate
+        get_samples_root(signal_id).estimated_to_depletion = samples[#samples].value / -rate_of_change
+    end
 end
 
 
@@ -90,4 +98,25 @@ function signals.rate_of_change(signal_id)
 
     return {"prodmon.rate-of-change-per-min",
         string.format("%.2f", get_samples_root(signal_id).rate_of_change_per_min)}
+end
+
+
+function signals.estimate_to_depletion(signal_id)
+    if get_samples_root(signal_id).rate_of_change_per_min == nil then
+        return "ETD: unknown"
+    end
+    if get_samples_root(signal_id).estimated_to_depletion == nil then
+        return "ETD: never"
+    end
+
+    local minutes = get_samples_root(signal_id).estimated_to_depletion
+    local hours = math.floor(minutes / 60)
+
+    if hours > 0 then
+        return string.format("ETD: %d h %d m", hours, minutes % 60)
+    elseif minutes > 1 then
+        return string.format("ETD: %d m", minutes)
+    else
+        return "ETD: <1 minute!"
+    end
 end
