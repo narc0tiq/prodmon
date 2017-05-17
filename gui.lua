@@ -5,6 +5,11 @@ gui = {
 }
 
 
+function gui.on_init()
+    global.gui = {}
+end
+
+
 local function name_that_signal(signal)
     local proto = { localised_name = string.format("Error: unknown signal type '%s'", signal.type) }
 
@@ -38,7 +43,7 @@ function gui.create(player)
     root.buttons.add{type="button", name="prodmon_all", style="YARM_expando_long", tooltip={"prodmon.show-all-tooltip"}}
     root.buttons.add{type="button", name="prodmon_ores", style="YARM_expando_short", tooltip={"prodmon.show-ores-tooltip"}}
 
-    gui.num_display_rows = 0
+    global.gui.num_display_rows = 0
 end
 
 
@@ -96,17 +101,15 @@ end
 
 
 function gui.update_display(player)
-    log("Update display")
     if not data_table_is_valid(player) then return end
+    if not global.gui.num_display_rows then global.gui.num_display_rows = 0 end
 
-    log("Has a valid data table")
-
-    if gui.num_display_rows < #gui.data_rows then
-        for i = gui.num_display_rows + 1, #gui.data_rows do
+    if global.gui.num_display_rows < #gui.data_rows then
+        for i = global.gui.num_display_rows + 1, #gui.data_rows do
             gui.add_display_row(player, i)
         end
-    elseif gui.num_display_rows > #gui.data_rows then
-        for i = #gui.data_rows + 1, gui.num_display_rows do
+    elseif global.gui.num_display_rows > #gui.data_rows then
+        for i = #gui.data_rows + 1, global.gui.num_display_rows do
             gui.remove_display_row(player, i)
         end
     end
@@ -126,7 +129,7 @@ function gui.add_display_row(player, i)
     data_root.add{type="label", name=string.format("prodmon_r%d_value", i)}
     data_root.add{type="label", name=string.format("prodmon_r%d_diff_rate", i)}
 
-    gui.num_display_rows = gui.num_display_rows + 1
+    global.gui.num_display_rows = global.gui.num_display_rows + 1
 end
 
 
@@ -139,7 +142,7 @@ function gui.remove_display_row(player, i)
     data_root[string.format("prodmon_r%d_value", i)].destroy()
     data_root[string.format("prodmon_r%d_diff_rate", i)].destroy()
 
-    gui.num_display_rows = gui.num_display_rows - 1
+    global.gui.num_display_rows = global.gui.num_display_rows - 1
 end
 
 

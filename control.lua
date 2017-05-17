@@ -46,32 +46,28 @@ events.on_robot_pre_mined = on_entity_remove
 
 local function update_signals(tick)
     log("Update signals")
-    if not global.active_combinator then return end
 
-    log("Have active combi")
+    for name, combi in combinators.each() do
+        local red_network = combi.get_circuit_network(defines.wire_type.red)
+        local green_network = combi.get_circuit_network(defines.wire_type.green)
 
-    local red_network = global.active_combinator.get_circuit_network(defines.wire_type.red)
-    local green_network = global.active_combinator.get_circuit_network(defines.wire_type.green)
+        local red_name = name.." red"
+        local green_name = name.." green"
 
-    gui.remove_data_rows("red")
-    log("remove reds")
-    gui.remove_data_rows("green")
-    log("remove greens")
+        gui.remove_data_rows(red_name)
+        gui.remove_data_rows(green_name)
 
-    if red_network and red_network.signals then
-        log("have red network")
-        for _, s in pairs(red_network.signals) do
-            signals.add_sample(tick, s)
-            gui.set_data_row("red", s)
-            log("add red "..s.signal.name)
+        if red_network and red_network.signals then
+            for _, s in pairs(red_network.signals) do
+                signals.add_sample(tick, s)
+                gui.set_data_row(red_name, s)
+            end
         end
-    end
-    if green_network and green_network.signals then
-        log("have green network")
-        for _, s in pairs(green_network.signals) do
-            signals.add_sample(tick, s)
-            gui.set_data_row("green", s)
-            log("add green "..s.signal.name)
+        if green_network and green_network.signals then
+            for _, s in pairs(green_network.signals) do
+                signals.add_sample(tick, s)
+                gui.set_data_row(green_name, s)
+            end
         end
     end
 end
@@ -104,6 +100,9 @@ end
 
 
 script.on_init(function()
+    combinators.on_init()
+    gui.on_init()
+
     for _, player in pairs(game.players) do
         gui.create(player)
         gui.update_display(player)
