@@ -6,8 +6,13 @@ local events = {}
 
 local function on_entity_built(e)
     if e.created_entity.name == "test-combinator" then
-        local name = combinators.add(e.created_entity)
+        local success, name = combinators.add(e.created_entity)
         log(string.format("Remembering combinator named %s", name))
+
+        if e.player_index then
+            local player = game.players[e.player_index]
+            gui.rename_monitor(player, name)
+        end
     end
 end
 events.on_built_entity = on_entity_built
@@ -18,7 +23,7 @@ local function on_entity_remove(e)
     log(string.format("Event %s", e.name))
     if e.entity.name ~= "test-combinator" then return end
 
-    local name = combinators.name_entity(e.entity)
+    local success, name = combinators.name_entity(e.entity)
     log(string.format("Got the name \"%s\"", name))
     if not name then return end
 

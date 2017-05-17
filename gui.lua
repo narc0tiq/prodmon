@@ -154,5 +154,57 @@ function gui.update_display_row(player, i, data_row)
 end
 
 
+function string.starts_with(haystack, needle)
+    return string.sub(haystack, 1, string.len(needle)) == needle
+end
+
+
+function string.ends_with(haystack, needle)
+    return string.sub(haystack, -string.len(needle)) == needle
+end
+
+
+function gui.rename_monitor(player, old_name)
+    local rename_root = player.gui.center.add{ type="frame", direction="vertical", name="prodmon_rename_"..old_name }
+    rename_root.add{ type="label", caption=string.format("Rename the monitor \"%s\" to:", old_name) }
+    rename_root.add{ type="textfield", name="new_name", text=old_name }
+    rename_root.add{ type="label", name="message", caption=string.format("Press OK to submit or Cancel to leave the old name.", old_name) }
+
+    local buttons = rename_root.add{ type="flow", direction="horizontal" }
+    buttons.add{ type="button", caption="OK", name="prodmon_rename_ok_"..old_name }
+    buttons.add{ type="button", caption="Cancel", name="prodmon_rename_cancel_"..old_name }
+end
+
+
 function gui.on_click(e)
+    if string.starts_with(e.element.name, "prodmon_rename_ok_") then
+        gui.on_rename_ok(e)
+    elseif string.starts_with(e.element.name, "prodmon_rename_cancel_") then
+        gui.on_rename_cancel(e)
+    end
+end
+
+
+function gui.on_rename_ok(e)
+    local player = game.players[e.player_index]
+    local old_name = string.sub(e.element.name, 1 + string.len("prodmon_rename_ok_"))
+
+    local rename_root = player.gui.center["prodmon_rename_"..old_name]
+
+    local new_name = rename_root.new_name.text
+    local success, err = combinators.rename(old_name, new_name)
+
+    if not success then
+        rename_root.message.caption = err
+    else
+        rename_root.destroy()
+    end
+end
+
+
+function gui.on_rename_cancel(e)
+    local player = game.players[e.player_index]
+    local old_name = string.sub(e.element.name, 1 + string.len("prodmon_rename_cancel_"))
+
+    player.gui.center["prodmon_rename_"..old_name].destroy()
 end
