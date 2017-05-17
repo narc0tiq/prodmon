@@ -152,3 +152,7 @@ function gui.update_display_row(player, i, data_row)
     data_root[string.format("prodmon_r%d_value", i)].caption = data_row.value
     data_root[string.format("prodmon_r%d_diff_rate", i)].caption = data_row.diff_rate
 end
+
+
+function gui.on_click(e)
+end

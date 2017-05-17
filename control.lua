@@ -1,30 +1,42 @@
+require("combinators")
 require("signals")
 require("gui")
 
 local events = {}
 
-function events.on_built_entity(e)
+local function on_entity_built(e)
     if e.created_entity.name == "test-combinator" then
-        local player = game.players[e.player_index]
-        log(string.format("%s put a test combi!", player.name))
-        global.active_combinator = e.created_entity
+        local name = combinators.add(e.created_entity)
+        log(string.format("Remembering combinator named %s", name))
     end
 end
+events.on_built_entity = on_entity_built
+events.on_robot_built_entity = on_entity_built
 
 
-function events.on_player_mined_entity(e)
-    if e.entity.name == "test-combinator" then
+local function on_entity_remove(e)
+    log(string.format("Event %s", e.name))
+    if e.entity.name ~= "test-combinator" then return end
 
-        if e.entity == global.active_combinator then
-            gui.remove_data_rows("red")
-            gui.remove_data_rows("green")
-            global.active_combinator = nil
-        end
+    local name = combinators.name_entity(e.entity)
+    log(string.format("Got the name \"%s\"", name))
+    if not name then return end
 
-        local player = game.players[e.player_index]
-        log(string.format("%s mined a test combi!", player.name))
+    local red_network = e.entity.get_circuit_network(defines.wire_type.red)
+
+    if red_network then
+        log("had a red network")
+    else
+        log("didn't have a red network")
     end
+
+    gui.remove_data_rows("red")
+    gui.remove_data_rows("green")
+    combinators.remove_by_name(name)
 end
+events.on_preplayer_mined_item = on_entity_remove
+events.on_entity_died = on_entity_remove
+events.on_robot_pre_mined = on_entity_remove
 
 
 local function update_signals(tick)
@@ -74,11 +86,24 @@ end
 
 
 function events.on_gui_click(e)
+    gui.on_click(e)
+end
+
+
+function events.on_player_joined_game(e)
     local player = game.players[e.player_index]
 
     gui.create(player)
     gui.update_display(player)
 end
+
+
+script.on_init(function()
+    for _, player in pairs(game.players) do
+        gui.create(player)
+        gui.update_display(player)
+    end
+end)
 
 
 for name, func in pairs(events) do
