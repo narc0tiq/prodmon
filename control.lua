@@ -45,30 +45,51 @@ events.on_entity_died = on_entity_remove
 events.on_robot_pre_mined = on_entity_remove
 
 
+local function merged_signals_from(entity)
+    local red_network = entity.get_circuit_network(defines.wire_type.red)
+    local green_network = entity.get_circuit_network(defines.wire_type.green)
+
+    local merged = {}
+    if red_network and red_network.signals then
+        for _, s in pairs(red_network.signals) do
+            if not merged[s.signal.type] then merged[s.signal.type] = {} end
+
+            local old_val = merged[s.signal.type][s.signal.name] or 0
+            merged[s.signal.type][s.signal.name] = old_val +  s.count
+        end
+    end
+    if green_network and green_network.signals then
+        for _, s in pairs(green_network.signals) do
+            if not merged[s.signal.type] then merged[s.signal.type] = {} end
+
+            local old_val = merged[s.signal.type][s.signal.name] or 0
+            merged[s.signal.type][s.signal.name] = old_val +  s.count
+        end
+    end
+
+    local merged_signals = {}
+    for type, sig in pairs(merged) do
+        for name, count in pairs(sig) do
+            local new_sig = {
+                signal = { type = type, name = name },
+                count = count
+            }
+            table.insert(merged_signals, new_sig)
+        end
+    end
+
+    return pairs(merged_signals)
+end
+
+
 local function update_signals(tick)
     log("Update signals")
 
     for name, combi in combinators.each() do
-        local red_network = combi.get_circuit_network(defines.wire_type.red)
-        local green_network = combi.get_circuit_network(defines.wire_type.green)
-
-        local red_name = name.." red"
-        local green_name = name.." green"
-
-        gui.remove_data_rows(red_name)
-        gui.remove_data_rows(green_name)
-
-        if red_network and red_network.signals then
-            for _, s in pairs(red_network.signals) do
-                signals.add_sample(tick, s)
-                gui.set_data_row(red_name, s)
-            end
-        end
-        if green_network and green_network.signals then
-            for _, s in pairs(green_network.signals) do
-                signals.add_sample(tick, s)
-                gui.set_data_row(green_name, s)
-            end
+        gui.remove_data_rows(name)
+        for _, s in merged_signals_from(combi) do
+            signals.add_sample(tick, s)
+            gui.set_data_row(name, s)
         end
     end
 end
