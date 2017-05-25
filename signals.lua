@@ -107,15 +107,16 @@ local function bucketize_samples(samples, update_rate)
     -- taking each sample tick and bucketing at
     -- sample.tick - sample.tick % update_rate
     local buckets = {}
+    local offset = samples[1].tick % update_rate
 
     for _, sample in ipairs(samples) do
-        local current_sample_tick = sample.tick - sample.tick % update_rate
+        local current_bucket_tick = sample.tick - offset - (sample.tick - offset) % update_rate
         local last_bucket = buckets[#buckets]
 
-        if #buckets == 0 or last_bucket.tick ~= current_sample_tick then
+        if #buckets == 0 or last_bucket.tick ~= current_bucket_tick then
             table.insert(buckets, {
                 value = sample.value,
-                tick = current_sample_tick,
+                tick = current_bucket_tick,
             })
         else
             if last_bucket.value < sample.value then
@@ -154,6 +155,8 @@ local function calculate_rate_of_change(signal_id)
 
     local update_rate = sample_root.update_rate or 300
 
+    log(string.format("Updating %s", signal_id.name))
+
     local buckets = bucketize_samples(samples, update_rate)
     if #buckets < 3 then
         sample_root.rate_of_change_per_min = nil
@@ -165,8 +168,7 @@ local function calculate_rate_of_change(signal_id)
     -- Weighted average: older samples' change rates have more impact than newer
     local sum_weighted_change_rates = 0
     local sum_weights = 0
-    -- ...except the first bucket might be incomplete, and therefore doesn't count
-    for i = 2, #buckets - 1 do
+    for i = 1, #buckets - 1 do
         local change_rate = change_per_min_between_samples(buckets[i], buckets[i + 1])
         local weight = #buckets - i
 
