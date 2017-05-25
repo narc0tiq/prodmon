@@ -96,7 +96,9 @@ end
 
 
 function events.on_tick(e)
-    if e.tick % 300 == 11 then
+    if e.tick % settings.global["prodmon-sample-frequency"].value == 9 then
+        signals.on_tick(e)
+
         update_signals(e.tick)
     end
 

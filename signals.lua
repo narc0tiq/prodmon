@@ -1,5 +1,5 @@
 
-local MAX_HISTORY_COUNT = 13
+local MAX_HISTORY_COUNT = 16
 
 signals = {
     history = {
@@ -31,41 +31,167 @@ local function get_samples_root(sig_id)
 end
 
 
-local function calculate_rate_of_change(signal_id)
-    local samples = get_samples_root(signal_id).samples
+local function reduce(tbl, func)
+    if not tbl then return nil end
 
-    if #samples < 2 then return end
-    local change_rates = {} -- per minute
+    local candidate = nil
+    for _,v in pairs(tbl) do
+        if candidate == nil or func(v, candidate) then
+            candidate = v
+        end
+    end
+    return candidate
+end
+
+
+local function largest_value_of(t)
+    return reduce(t, function(new, current) return new > current end)
+end
+
+
+local function smallest_value_of(t)
+    return reduce(t, function(new, current) return new < current end)
+end
+
+
+-- Potentially change the update rate of a signal, if it shows signs of changing
+-- more often than the currently-recorded rate.
+-- A signal's update rate controls the number and size of the buckets that samples
+-- are split into before rate-of-change analysis. In particular, signals from a
+-- mining drill are only updated every 300 ticks, and this is the default.
+-- Update rate can only ever decrease, and must show consistent faster change
+-- (more than (MAX_HISTORY_COUNT / 2) + 1 samples taken less than update_rate
+-- apart).
+-- NB: Signal update rates can only get shorter, never longer (but will reset
+-- on load).
+local function check_update_rate(sample_root)
+    local update_rate = sample_root.update_rate or 300
+    local samples = sample_root.samples
+
+    local faster_update_candidates = {}
 
     for i = 1, (#samples - 1) do
-        local difference = samples[i].value - samples[#samples].value
-        local timespan = samples[#samples].tick - samples[i].tick
+        local timespan = samples[i+1].tick - samples[i].tick
+        local difference = samples[i+1].value - samples[i].value
 
-        log(string.format("Weight %d, difference %d, timespan %d, unweighted change %f/min",
-            #samples - i,
-            difference,
-            timespan,
-            difference * 60 * 60 / timespan))
-        change_rates[i] = (#samples - i) * difference * 60 * 60 / timespan
+        if timespan < 0 then
+            log(string.format("WTF, there are two samples in the wrong order: %d and %d at ticks %d and %d. Ignored.",
+                samples[i+1].value, samples[i].value, samples[i+1].tick, samples[i].tick))
+        -- less than update_rate (but not 0 ticks) apart...
+        elseif timespan > 0 and timespan < update_rate then
+            -- ...and showing any difference at all...
+            if samples[i].value - samples[i+1].value ~= 0 then
+                -- then record a possible update_rate diff
+                table.insert(faster_update_candidates, timespan)
+            end
+        -- TODO: need a way to slow down the updates if the update rate is too fast
+        end
     end
 
-    local change_sum = 0
-    for i,v in ipairs(change_rates) do
-        change_sum = change_sum + v
+    log(string.format("Have %d faster update candidates, need %d to change.",
+        #faster_update_candidates, MAX_HISTORY_COUNT / 2 + 1))
+
+    -- showing _consistent_ change...
+    if #faster_update_candidates > MAX_HISTORY_COUNT / 2 + 1 then
+        -- ...then pick the largest stored timespan between diffs
+        -- (still smaller than the current update_rate)
+        local new_rate = largest_value_of(faster_update_candidates)
+        log(string.format("Speeding up to sample rate %d", new_rate))
+        sample_root.update_rate = new_rate
     end
-    local sum_weights = #change_rates * (#change_rates + 1) / 2
+end
 
-    log(string.format("Sum of changes %f, Num samples %d, sum weights %d, New rate of change: %f", change_sum, #change_rates, sum_weights, change_sum / sum_weights))
 
-    -- rate * ups * sec-per-min
-    local rate_of_change = -(change_sum / sum_weights)
-    get_samples_root(signal_id).rate_of_change_per_min = rate_of_change
+local function bucketize_samples(samples, update_rate)
+    -- Pick the largest value for each bucket formed from
+    -- taking each sample tick and bucketing at
+    -- sample.tick - sample.tick % update_rate
+    local buckets = {}
+
+    for _, sample in ipairs(samples) do
+        local current_sample_tick = sample.tick - sample.tick % update_rate
+        local last_bucket = buckets[#buckets]
+
+        if #buckets == 0 or last_bucket.tick ~= current_sample_tick then
+            table.insert(buckets, {
+                value = sample.value,
+                tick = current_sample_tick,
+            })
+        else
+            if last_bucket.value < sample.value then
+                last_bucket.value = sample.value
+            end
+        end
+    end
+
+    return buckets
+end
+
+
+local function change_per_min_between_samples(old, new)
+    local diff = new.value - old.value
+    local duration = new.tick - old.tick
+
+    if duration == 0 then return 0 end
+
+    return diff * 60 * 60 / duration
+    --     (    ^ per minute       )
+end
+
+
+
+local function calculate_rate_of_change(signal_id)
+    local sample_root = get_samples_root(signal_id)
+    local samples = sample_root.samples
+
+    if #samples < 2 then
+        sample_root.rate_of_change_per_min = nil
+        sample_root.estimated_to_depletion = nil
+        return
+    end
+
+    check_update_rate(sample_root)
+
+    local update_rate = sample_root.update_rate or 300
+
+    local buckets = bucketize_samples(samples, update_rate)
+    if #buckets < 3 then
+        sample_root.rate_of_change_per_min = nil
+        sample_root.estimated_to_depletion = nil
+        return
+    end
+
+
+    -- Weighted average: older samples' change rates have more impact than newer
+    local sum_weighted_change_rates = 0
+    local sum_weights = 0
+    -- ...except the first bucket might be incomplete, and therefore doesn't count
+    for i = 2, #buckets - 1 do
+        local change_rate = change_per_min_between_samples(buckets[i], buckets[i + 1])
+        local weight = #buckets - i
+
+        log(string.format("Weight %d, difference %d, duration %d, unweighted change %f/min",
+            weight,
+            buckets[i].value - buckets[i+1].value,
+            buckets[i+1].tick - buckets[i].tick,
+            change_rate))
+
+        sum_weighted_change_rates = sum_weighted_change_rates + weight * change_rate
+        sum_weights = sum_weights + weight
+    end
+
+
+    local rate_of_change = sum_weighted_change_rates / sum_weights
+    sample_root.rate_of_change_per_min = rate_of_change
+    log(string.format("Final sum_weights: %d, sum_weighted_change_rates: %f. New change rate: %f/min",
+        sum_weights, sum_weighted_change_rates, rate_of_change))
+
 
     if rate_of_change >= 0 then
-        get_samples_root(signal_id).estimated_to_depletion = nil
+        sample_root.estimated_to_depletion = nil
     else
         -- time to deplete: last sample / decay rate
-        get_samples_root(signal_id).estimated_to_depletion = samples[#samples].value / -rate_of_change
+        get_samples_root(signal_id).estimated_to_depletion = samples[#samples].value / (-rate_of_change)
     end
 end
 
@@ -73,18 +199,11 @@ end
 function signals.add_sample(tick, live)
     local samples = get_samples_root(live.signal).samples
 
---    if samples[#samples] and samples[#samples].value == live.count then
---        log(string.format("Ignoring duplicate value %d for %s", live.count, live.signal.name))
---        return
---    end
-
     local new_sample = { tick = tick, value = live.count }
     table.insert(samples, new_sample)
-    log(string.format("New sample: t:%s, n:%s, t:%d, v:%d", live.signal.type, live.signal.name, tick, live.count))
 
     while #samples > MAX_HISTORY_COUNT do
         table.remove(samples, 1)
-        log(string.format("Removed oldest sample (have %d, want %d).", #samples, MAX_HISTORY_COUNT))
     end
 
     calculate_rate_of_change(live.signal)
@@ -119,4 +238,9 @@ function signals.estimate_to_depletion(signal_id)
     else
         return "ETD: <1 minute!"
     end
+end
+
+
+function signals.on_tick(e)
+    MAX_HISTORY_COUNT = settings.global["prodmon-sample-count"].value
 end
