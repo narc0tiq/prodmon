@@ -264,7 +264,7 @@ function signals.percent_remaining(signal_id)
 
     if not sample_root.largest_seen or not sample_root.latest then return "-- %" end
 
-    return string.format("%.1f %%", sample_root.latest * 100 / sample_root.largest_seen)
+    return sample_root.latest * 100 / sample_root.largest_seen
 end
 
 

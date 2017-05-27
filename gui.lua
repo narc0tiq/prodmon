@@ -117,6 +117,8 @@ function gui.update_display(player)
         end
     end
 
+    table.sort(gui.data_rows, function(left, right) return left.percent < right.percent end)
+
     for i = 1, #gui.data_rows do
         gui.update_display_row(player, i, gui.data_rows[i])
     end
@@ -159,16 +161,53 @@ local function format_number(n) -- credit http://richard.warburton.it
 end
 
 
+local function color_from_percent(percent)
+    local color = {
+        r=math.floor(10 * 255 / percent),
+        g=math.floor(percent * 255 / 10),
+        b=0
+    }
+    if color.r > 255 then color.r = 255
+    elseif color.r < 2 then color.r = 2 end
+
+    if color.g > 255 then color.g = 255
+    elseif color.g < 2 then color.g = 2 end
+
+    return color
+end
+
+
 function gui.update_display_row(player, i, data_row)
     local data_root = player.gui.left.prodmon.data
+    local color = color_from_percent(data_row.percent)
 
-    data_root[string.format("prodmon_r%d_title", i)].caption = data_row.title
-    data_root[string.format("prodmon_r%d_type", i)].caption = data_row.type
-    data_root[string.format("prodmon_r%d_display_name", i)].caption = data_row.display_name
-    data_root[string.format("prodmon_r%d_value", i)].caption = format_number(data_row.value)
-    data_root[string.format("prodmon_r%d_percent", i)].caption = data_row.percent
-    data_root[string.format("prodmon_r%d_diff_rate", i)].caption = data_row.diff_rate
-    data_root[string.format("prodmon_r%d_to_depletion", i)].caption = data_row.to_depletion
+    local cell = data_root[string.format("prodmon_r%d_title", i)]
+    cell.caption = data_row.title
+    cell.style.font_color = color
+
+    cell = data_root[string.format("prodmon_r%d_type", i)]
+    cell.caption = data_row.type
+    cell.style.font_color = color
+
+    cell = data_root[string.format("prodmon_r%d_display_name", i)]
+    cell.caption = data_row.display_name
+    cell.style.font_color = color
+
+    cell = data_root[string.format("prodmon_r%d_value", i)]
+    cell.caption = format_number(data_row.value)
+    cell.style.font_color = color
+
+    cell = data_root[string.format("prodmon_r%d_percent", i)]
+    cell.caption = string.format("%.1f %%", data_row.percent)
+    cell.style.font_color = color
+
+    cell = data_root[string.format("prodmon_r%d_diff_rate", i)]
+    cell.caption = data_row.diff_rate
+    cell.style.font_color = color
+
+    cell = data_root[string.format("prodmon_r%d_to_depletion", i)]
+    cell.caption = data_row.to_depletion
+    cell.style.font_color = color
 end
 
 
