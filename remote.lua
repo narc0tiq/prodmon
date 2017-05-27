@@ -9,4 +9,10 @@ function interface.reset_gui(player)
 end
 
 
+function interface.on_init()
+    combinators.on_init()
+    gui.on_init()
+end
+
+
 remote.add_interface("prodmon", interface)

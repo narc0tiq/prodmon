@@ -38,7 +38,7 @@ function gui.create(player)
 
     root.add{type="label", caption={"prodmon.short-title-text"}, style="prodmon_ident", tooltip={"prodmon.short-title-tooltip"}}
     root.add{type="flow", name="buttons", direction="vertical", style="prodmon_buttons"}
-    root.add{type="table", name="data", colspan=6, style="prodmon_data_table"}
+    root.add{type="table", name="data", colspan=7, style="prodmon_data_table"}
 
     root.buttons.add{type="button", name="prodmon_all", style="YARM_expando_long", tooltip={"prodmon.show-all-tooltip"}}
     root.buttons.add{type="button", name="prodmon_ores", style="YARM_expando_short", tooltip={"prodmon.show-ores-tooltip"}}
@@ -61,6 +61,7 @@ function gui.add_data_row(title, signal)
         name = signal.signal.name,
         display_name = name_that_signal(signal.signal),
         value = signal.count,
+        percent = signals.percent_remaining(signal.signal),
         diff_rate = signals.rate_of_change(signal.signal),
         to_depletion = signals.estimate_to_depletion(signal.signal),
     }
@@ -83,6 +84,7 @@ function gui.update_data_row(title, signal)
     for i, row in pairs(gui.data_rows) do
         if row.title == title and row.type == signal.signal.type and row.name == signal.signal.name then
             row.value = signal.count
+            row.percent = signals.percent_remaining(signal.signal)
             row.diff_rate = signals.rate_of_change(signal.signal)
 
             -- Assumption: only one data row matches the title and signal
@@ -128,6 +130,7 @@ function gui.add_display_row(player, i)
     data_root.add{type="label", name=string.format("prodmon_r%d_type", i)}
     data_root.add{type="label", name=string.format("prodmon_r%d_display_name", i)}
     data_root.add{type="label", name=string.format("prodmon_r%d_value", i)}
+    data_root.add{type="label", name=string.format("prodmon_r%d_percent", i)}
     data_root.add{type="label", name=string.format("prodmon_r%d_diff_rate", i)}
     data_root.add{type="label", name=string.format("prodmon_r%d_to_depletion", i)}
 
@@ -142,6 +145,7 @@ function gui.remove_display_row(player, i)
     data_root[string.format("prodmon_r%d_type", i)].destroy()
     data_root[string.format("prodmon_r%d_display_name", i)].destroy()
     data_root[string.format("prodmon_r%d_value", i)].destroy()
+    data_root[string.format("prodmon_r%d_percent", i)].destroy()
     data_root[string.format("prodmon_r%d_diff_rate", i)].destroy()
     data_root[string.format("prodmon_r%d_to_depletion", i)].destroy()
 
@@ -162,6 +166,7 @@ function gui.update_display_row(player, i, data_row)
     data_root[string.format("prodmon_r%d_type", i)].caption = data_row.type
     data_root[string.format("prodmon_r%d_display_name", i)].caption = data_row.display_name
     data_root[string.format("prodmon_r%d_value", i)].caption = format_number(data_row.value)
+    data_root[string.format("prodmon_r%d_percent", i)].caption = data_row.percent
     data_root[string.format("prodmon_r%d_diff_rate", i)].caption = data_row.diff_rate
     data_root[string.format("prodmon_r%d_to_depletion", i)].caption = data_row.to_depletion
 end

@@ -3,17 +3,24 @@ local MAX_HISTORY_COUNT = 16
 
 signals = {
     history = {
-        item = {
---            ["iron-ore"] = {
---                samples = {
---                    { tick = 0, value = 120 },
---                    { tick = 60, value = 60 },
---                    { tick = 120, value = 0 },
---                }
---            }
-        },
-        fluid = {},
-        virtual = {},
+--        player = { -- force
+--            ["some-combinator"] = { -- monitor name
+--                item = { -- signal type
+--                    ["iron-ore"] = { -- signal name
+--                        samples = { -- samples
+--                            { tick = 0, value = 120 },
+--                            { tick = 60, value = 60 },
+--                            { tick = 120, value = 0 },
+--                        },
+--                        update_rate = 300, -- ticks
+--                        latest = 0, -- speeds the calculation of % filled
+--                        largest_seen = 120, -- represents 100% filled
+--                    },
+--                },
+--                fluid = {},
+--                virtual = {},
+--            },
+--        },
     },
 }
 
@@ -155,7 +162,7 @@ local function calculate_rate_of_change(signal_id)
 
     local update_rate = sample_root.update_rate or 300
 
-    log(string.format("Updating %s", signal_id.name))
+    log(string.format("Updating %s, update rate %d ticks", signal_id.name, update_rate))
 
     local buckets = bucketize_samples(samples, update_rate)
     if #buckets < 3 then
@@ -188,18 +195,17 @@ local function calculate_rate_of_change(signal_id)
     log(string.format("Final sum_weights: %d, sum_weighted_change_rates: %f. New change rate: %f/min",
         sum_weights, sum_weighted_change_rates, rate_of_change))
 
-
-    if rate_of_change >= 0 then
-        sample_root.estimated_to_depletion = nil
-    else
-        -- time to deplete: last sample / decay rate
-        get_samples_root(signal_id).estimated_to_depletion = samples[#samples].value / (-rate_of_change)
-    end
 end
 
 
 function signals.add_sample(tick, live)
-    local samples = get_samples_root(live.signal).samples
+    local sample_root = get_samples_root(live.signal)
+    sample_root.latest = live.count
+    if not sample_root.largest_seen or sample_root.largest_seen < live.count then
+        sample_root.largest_seen = live.count
+    end
+
+    local samples = sample_root.samples
 
     local new_sample = { tick = tick, value = live.count }
     table.insert(samples, new_sample)
@@ -223,23 +229,42 @@ end
 
 
 function signals.estimate_to_depletion(signal_id)
-    if get_samples_root(signal_id).rate_of_change_per_min == nil then
-        return "ETD: unknown"
-    end
-    if get_samples_root(signal_id).estimated_to_depletion == nil then
-        return "ETD: never"
+    local sample_root = get_samples_root(signal_id)
+    if sample_root.rate_of_change_per_min == nil then
+        return "ETD/F: unknown"
     end
 
-    local minutes = get_samples_root(signal_id).estimated_to_depletion
+    local rate_of_change = sample_root.rate_of_change_per_min
+    local title = "ETD" -- estimated time to depletion
+    local minutes = 0
+
+    if rate_of_change == 0 then
+        return "ETD/F: never"
+    elseif sample_root.rate_of_change_per_min > 0 then
+        title = "ETF" -- estimated time to full
+        minutes = (sample_root.largest_seen - sample_root.latest) / rate_of_change
+    else -- rate_of_change is negative (decaying)
+        minutes = sample_root.latest / -rate_of_change
+    end
+
     local hours = math.floor(minutes / 60)
 
     if hours > 0 then
-        return string.format("ETD: %d h %d m", hours, minutes % 60)
+        return string.format("%s: %d h %d m", title, hours, minutes % 60)
     elseif minutes > 1 then
-        return string.format("ETD: %d m", minutes)
+        return string.format("%s: %d m", title, minutes)
     else
-        return "ETD: <1 minute!"
+        return string.format("%s: <1 minute!", title)
     end
+end
+
+
+function signals.percent_remaining(signal_id)
+    local sample_root = get_samples_root(signal_id)
+
+    if not sample_root.largest_seen or not sample_root.latest then return "-- %" end
+
+    return string.format("%.1f %%", sample_root.latest * 100 / sample_root.largest_seen)
 end
 
 
