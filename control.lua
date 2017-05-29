@@ -28,16 +28,7 @@ local function on_entity_remove(e)
     log(string.format("Got the name \"%s\"", name))
     if not name then return end
 
-    local red_network = e.entity.get_circuit_network(defines.wire_type.red)
-
-    if red_network then
-        log("had a red network")
-    else
-        log("didn't have a red network")
-    end
-
-    gui.remove_data_rows("red")
-    gui.remove_data_rows("green")
+    gui.remove_data_rows(name)
     combinators.remove_by_name(name)
 end
 events.on_preplayer_mined_item = on_entity_remove
@@ -45,7 +36,7 @@ events.on_entity_died = on_entity_remove
 events.on_robot_pre_mined = on_entity_remove
 
 
-local function merged_signals_from(entity)
+local function merged_signals_from(entity, title)
     local red_network = entity.get_circuit_network(defines.wire_type.red)
     local green_network = entity.get_circuit_network(defines.wire_type.green)
 
@@ -72,7 +63,9 @@ local function merged_signals_from(entity)
         for name, count in pairs(sig) do
             local new_sig = {
                 signal = { type = type, name = name },
-                count = count
+                count = count,
+                title = title,
+                entity = entity,
             }
             table.insert(merged_signals, new_sig)
         end
@@ -85,11 +78,12 @@ end
 local function update_signals(tick)
     log("Update signals")
 
-    for name, combi in combinators.each() do
-        gui.remove_data_rows(name)
-        for _, s in merged_signals_from(combi) do
+    for title, entity in combinators.each() do
+        gui.remove_data_rows(title)
+
+        for _, s in merged_signals_from(entity, title) do
             signals.add_sample(tick, s)
-            gui.set_data_row(name, s)
+            gui.set_data_row(s)
         end
     end
 end
@@ -124,6 +118,7 @@ end
 
 
 script.on_init(function()
+    signals.on_init()
     combinators.on_init()
     gui.on_init()
 

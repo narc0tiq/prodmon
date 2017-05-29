@@ -1,8 +1,12 @@
 
 local MAX_HISTORY_COUNT = 16
 
-signals = {
-    history = {
+
+signals = {}
+
+
+function signals.on_init()
+    global.signals_history = {
 --        player = { -- force
 --            ["some-combinator"] = { -- monitor name
 --                item = { -- signal type
@@ -21,20 +25,38 @@ signals = {
 --                virtual = {},
 --            },
 --        },
-    },
-}
+    }
+end
 
 
-local function get_samples_root(sig_id)
-    if not signals.history[sig_id.type] then
-        signals.history[sig_id.type] = {}
+
+
+local function get_samples_root(signal)
+    if not global.signals_history then
+        global.signals_history = {}
     end
-    local hist = signals.history[sig_id.type]
-    if not hist[sig_id.name]  then
-        hist[sig_id.name] = { samples = {} }
+    local all_history = global.signals_history
+
+    if not all_history[signal.entity.force.name] then
+        all_history[signal.entity.force.name] = {}
+    end
+    local force_history = all_history[signal.entity.force.name]
+
+    if not force_history[signal.title] then
+        force_history[signal.title] = {}
+    end
+    local title_history = force_history[signal.title]
+
+    if not title_history[signal.signal.type] then
+        title_history[signal.signal.type] = {}
+    end
+    local type_history = title_history[signal.signal.type]
+
+    if not type_history[signal.signal.name] then
+        type_history[signal.signal.name] = { samples = {} }
     end
 
-    return hist[sig_id.name]
+    return type_history[signal.signal.name]
 end
 
 
@@ -148,8 +170,9 @@ end
 
 
 
-local function calculate_rate_of_change(signal_id)
-    local sample_root = get_samples_root(signal_id)
+local function calculate_rate_of_change(signal)
+    local success, sample_root = pcall(get_samples_root, signal)
+    if not success then error(sample_root) end
     local samples = sample_root.samples
 
     if #samples < 2 then
@@ -162,7 +185,7 @@ local function calculate_rate_of_change(signal_id)
 
     local update_rate = sample_root.update_rate or 300
 
-    log(string.format("Updating %s, update rate %d ticks", signal_id.name, update_rate))
+    log(string.format("Updating %s, signal %s, update rate %d ticks", signal.title, signal.signal.name, update_rate))
 
     local buckets = bucketize_samples(samples, update_rate)
     if #buckets < 3 then
@@ -199,7 +222,11 @@ end
 
 
 function signals.add_sample(tick, live)
-    local sample_root = get_samples_root(live.signal)
+    if not live.entity or not live.entity.valid then return end
+
+    local success, sample_root = pcall(get_samples_root, live)
+    if not success then error(sample_root) end
+
     sample_root.latest = live.count
     if not sample_root.largest_seen or sample_root.largest_seen < live.count then
         sample_root.largest_seen = live.count
@@ -214,22 +241,27 @@ function signals.add_sample(tick, live)
         table.remove(samples, 1)
     end
 
-    calculate_rate_of_change(live.signal)
+    calculate_rate_of_change(live)
 end
 
 
-function signals.rate_of_change(signal_id)
-    if get_samples_root(signal_id).rate_of_change_per_min == nil then
+function signals.rate_of_change(signal)
+    local success, sample_root = pcall(get_samples_root, signal)
+    if not success then error(sample_root) end
+
+    if sample_root.rate_of_change_per_min == nil then
         return {"prodmon.insufficient-data"}
     end
 
     return {"prodmon.rate-of-change-per-min",
-        string.format("%.2f", get_samples_root(signal_id).rate_of_change_per_min)}
+        string.format("%.2f", sample_root.rate_of_change_per_min)}
 end
 
 
-function signals.estimate_to_depletion(signal_id)
-    local sample_root = get_samples_root(signal_id)
+function signals.estimate_to_depletion(signal)
+    local success, sample_root = pcall(get_samples_root, signal)
+    if not success then error(sample_root) end
+
     if sample_root.rate_of_change_per_min == nil then
         return "ETD/F: unknown"
     end
@@ -259,8 +291,9 @@ function signals.estimate_to_depletion(signal_id)
 end
 
 
-function signals.percent_remaining(signal_id)
-    local sample_root = get_samples_root(signal_id)
+function signals.percent_remaining(signal)
+    local success, sample_root = pcall(get_samples_root, signal)
+    if not success then error(sample_root) end
 
     if not sample_root.largest_seen or not sample_root.latest then return "-- %" end
 

@@ -54,16 +54,16 @@ function gui.destroy(player)
 end
 
 
-function gui.add_data_row(title, signal)
+function gui.add_data_row(signal)
     local new_row = {
-        title = title,
+        title = signal.title,
         type = signal.signal.type,
         name = signal.signal.name,
         display_name = name_that_signal(signal.signal),
         value = signal.count,
-        percent = signals.percent_remaining(signal.signal),
-        diff_rate = signals.rate_of_change(signal.signal),
-        to_depletion = signals.estimate_to_depletion(signal.signal),
+        percent = signals.percent_remaining(signal),
+        diff_rate = signals.rate_of_change(signal),
+        to_depletion = signals.estimate_to_depletion(signal),
     }
 
     table.insert(gui.data_rows, new_row)
@@ -80,12 +80,13 @@ function gui.remove_data_rows(title)
 end
 
 
-function gui.update_data_row(title, signal)
+function gui.update_data_row(signal)
     for i, row in pairs(gui.data_rows) do
-        if row.title == title and row.type == signal.signal.type and row.name == signal.signal.name then
+        if row.title == signal.title and row.type == signal.signal.type and row.name == signal.signal.name then
             row.value = signal.count
-            row.percent = signals.percent_remaining(signal.signal)
-            row.diff_rate = signals.rate_of_change(signal.signal)
+            row.percent = signals.percent_remaining(signal)
+            row.diff_rate = signals.rate_of_change(signal)
+            row.to_depletion = signals.estimate_to_depletion(signal)
 
             -- Assumption: only one data row matches the title and signal
             return true
@@ -96,10 +97,29 @@ function gui.update_data_row(title, signal)
 end
 
 
-function gui.set_data_row(title, signal)
-    if not gui.update_data_row(title, signal) then
-        gui.add_data_row(title, signal)
+function gui.set_data_row(signal)
+    if not signal.title then return end
+
+    if not gui.update_data_row(signal) then
+        gui.add_data_row(signal)
     end
+end
+
+
+local function sort_data_rows(left, right)
+    if left.percent < right.percent then return true
+    elseif left.percent > right.percent then return false end
+
+    if left.value < right.value then return true
+    elseif left.value > right.value then return false end
+
+    if left.title < right.title then return true
+    elseif left.title > right.title then return false end
+
+    if left.name < right.name then return true
+    elseif left.name > right.name then return false end
+
+    return false
 end
 
 
@@ -117,7 +137,7 @@ function gui.update_display(player)
         end
     end
 
-    table.sort(gui.data_rows, function(left, right) return left.percent < right.percent end)
+    table.sort(gui.data_rows, sort_data_rows)
 
     for i = 1, #gui.data_rows do
         gui.update_display_row(player, i, gui.data_rows[i])

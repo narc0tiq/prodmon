@@ -10,6 +10,7 @@ end
 
 
 function interface.on_init()
+    signals.on_init()
     combinators.on_init()
     gui.on_init()
 end
