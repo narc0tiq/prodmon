@@ -34,11 +34,11 @@ end
 function gui.create(player)
     if player.gui.left.prodmon then return end
 
-    local root = player.gui.left.add{type="frame", name="prodmon", direction="horizontal", style="outer_frame_style"}
+    local root = player.gui.left.add{type="frame", name="prodmon", direction="horizontal", style="outer_frame"}
 
     root.add{type="label", caption={"prodmon.short-title-text"}, style="prodmon_ident", tooltip={"prodmon.short-title-tooltip"}}
     root.add{type="flow", name="buttons", direction="vertical", style="prodmon_buttons"}
-    root.add{type="table", name="data", colspan=7, style="prodmon_data_table"}
+    root.add{type="table", name="data", column_count=7, style="prodmon_data_table"}
 
     root.buttons.add{type="button", name="prodmon_all", style="YARM_expando_long", tooltip={"prodmon.show-all-tooltip"}}
     root.buttons.add{type="button", name="prodmon_ores", style="YARM_expando_short", tooltip={"prodmon.show-ores-tooltip"}}

@@ -52,7 +52,7 @@ local default_gui = data.raw["gui-style"].default
 
 default_gui.prodmon_ident = {
     type = "label_style",
-    parent = "label_style",
+    parent = "label",
     font = "default-small-semibold",
 }
 
@@ -63,8 +63,8 @@ default_gui.prodmon_data_table = {
 }
 
 default_gui.prodmon_buttons = {
-    type = "flow_style",
-    parent = "description_flow_style",
+    type = "vertical_flow_style",
+    parent = "description_vertical_flow",
     horizontal_spacing = 1,
     vertical_spacing = 5,
     top_padding = 4,
