@@ -76,8 +76,6 @@ end
 
 
 local function update_signals(tick)
-    log("Update signals")
-
     for title, entity in combinators.each() do
         gui.remove_data_rows(title)
 
