@@ -1,10 +1,10 @@
 {
-  "name": "prodmon",
-  "version": "0.1.0",
-  "factorio_version": "0.15",
-  "title": "ProdMon - Production Monitor",
+  "name": "{{MOD_NAME}}",
+  "version": "{{VERSION}}",
+  "factorio_version": "0.16",
+  "title": "prodmon - Production Monitor",
   "author": "Octav \"narc\" Sandulescu",
   "contact": "factorio-mods@narc.ro",
   "description": "Provides a quick overview of anything circuit-connectable.",
-  "dependencies": ["base >= 0.15.0", "YARM >= 0.7.0"]
+  "dependencies": ["base >= 0.16.0", "YARM >= 0.7.0"]
 }
