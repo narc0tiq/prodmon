@@ -1,5 +1,7 @@
 interface = {}
 
+interface.console = require("utils.console")
+
 
 function interface.reset_gui(player)
     if not player then return end
@@ -14,6 +16,5 @@ function interface.on_init()
     combinators.on_init()
     gui.on_init()
 end
-
 
 remote.add_interface("prodmon", interface)

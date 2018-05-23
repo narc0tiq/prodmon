@@ -1,6 +1,7 @@
 
 gui = {
     data_rows = {},
+    patterns = {},
     -- and functions below
 }
 
@@ -231,16 +232,6 @@ function gui.update_display_row(player, i, data_row)
 end
 
 
-function string.starts_with(haystack, needle)
-    return string.sub(haystack, 1, string.len(needle)) == needle
-end
-
-
-function string.ends_with(haystack, needle)
-    return string.sub(haystack, -string.len(needle)) == needle
-end
-
-
 function gui.rename_monitor(player, old_name)
     local rename_root = player.gui.center.add{ type="frame", direction="vertical", name="prodmon_rename_"..old_name }
     rename_root.add{ type="label", caption=string.format("Rename the monitor \"%s\" to:", old_name) }
@@ -253,11 +244,16 @@ function gui.rename_monitor(player, old_name)
 end
 
 
+function gui.register_on_click(pattern, handler)
+    gui.patterns[pattern] = handler
+end
+
+
 function gui.on_click(e)
-    if string.starts_with(e.element.name, "prodmon_rename_ok_") then
-        gui.on_rename_ok(e)
-    elseif string.starts_with(e.element.name, "prodmon_rename_cancel_") then
-        gui.on_rename_cancel(e)
+    for pattern, handler in pairs(gui.patterns) do
+        if e.element.name:match(pattern) then
+            handler(e)
+        end
     end
 end
 
@@ -277,6 +273,7 @@ function gui.on_rename_ok(e)
         rename_root.destroy()
     end
 end
+gui.register_on_click("^prodmon_rename_ok_", gui.on_rename_ok)
 
 
 function gui.on_rename_cancel(e)
@@ -285,3 +282,4 @@ function gui.on_rename_cancel(e)
 
     player.gui.center["prodmon_rename_"..old_name].destroy()
 end
+gui.register_on_click("^prodmon_rename_cancel_", gui.on_rename_cancel)
