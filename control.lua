@@ -31,7 +31,7 @@ local function on_entity_remove(e)
     gui.remove_data_rows(name)
     combinators.remove_by_name(name)
 end
-events.on_preplayer_mined_item = on_entity_remove
+events.on_pre_player_mined_item = on_entity_remove
 events.on_entity_died = on_entity_remove
 events.on_robot_pre_mined = on_entity_remove
 
