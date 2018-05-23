@@ -6,7 +6,7 @@ require("remote")
 local events = {}
 
 local function on_entity_built(e)
-    if e.created_entity.name == "test-combinator" then
+    if e.created_entity.name == "production-monitor" then
         local success, name = combinators.add(e.created_entity)
         log(string.format("Remembering combinator named %s", name))
 
@@ -22,7 +22,7 @@ events.on_robot_built_entity = on_entity_built
 
 local function on_entity_remove(e)
     log(string.format("Event %s", e.name))
-    if e.entity.name ~= "test-combinator" then return end
+    if e.entity.name ~= "production-monitor" then return end
 
     local success, name = combinators.name_entity(e.entity)
     log(string.format("Got the name \"%s\"", name))
@@ -79,9 +79,13 @@ local function update_signals(tick)
     for title, entity in combinators.each() do
         gui.remove_data_rows(title)
 
-        for _, s in merged_signals_from(entity, title) do
-            signals.add_sample(tick, s)
-            gui.set_data_row(s)
+        if not entity.valid then
+            combinators.remove_entity(entity)
+        else
+            for _, s in merged_signals_from(entity, title) do
+                signals.add_sample(tick, s)
+                gui.set_data_row(s)
+            end
         end
     end
 end
