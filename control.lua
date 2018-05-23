@@ -129,7 +129,7 @@ end)
 
 for name, func in pairs(events) do
     if not defines.events[name] then
-        log(string.format("test-mod: ignoring handler for non-existent event %s", name))
+        log(string.format("Ignoring handler for non-existent event %s", name))
     else
         script.on_event(defines.events[name], function(e)
             local success, err = pcall(func, e)

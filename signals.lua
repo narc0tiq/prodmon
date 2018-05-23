@@ -117,8 +117,8 @@ local function check_update_rate(sample_root)
         end
     end
 
-    log(string.format("Have %d faster update candidates, need %d to change.",
-        #faster_update_candidates, MAX_HISTORY_COUNT / 2 + 1))
+    -- log(string.format("Have %d faster update candidates, need %d to change.",
+    --     #faster_update_candidates, MAX_HISTORY_COUNT / 2 + 1))
 
     -- showing _consistent_ change...
     if #faster_update_candidates > MAX_HISTORY_COUNT / 2 + 1 then
@@ -185,7 +185,7 @@ local function calculate_rate_of_change(signal)
 
     local update_rate = sample_root.update_rate or 300
 
-    log(string.format("Updating %s, signal %s, update rate %d ticks", signal.title, signal.signal.name, update_rate))
+    -- log(string.format("Updating %s, signal %s, update rate %d ticks", signal.title, signal.signal.name, update_rate))
 
     local buckets = bucketize_samples(samples, update_rate)
     if #buckets < 3 then
@@ -202,11 +202,11 @@ local function calculate_rate_of_change(signal)
         local change_rate = change_per_min_between_samples(buckets[i], buckets[i + 1])
         local weight = #buckets - i
 
-        log(string.format("Weight %d, difference %d, duration %d, unweighted change %f/min",
-            weight,
-            buckets[i].value - buckets[i+1].value,
-            buckets[i+1].tick - buckets[i].tick,
-            change_rate))
+        -- log(string.format("Weight %d, difference %d, duration %d, unweighted change %f/min",
+        --     weight,
+        --     buckets[i].value - buckets[i+1].value,
+        --     buckets[i+1].tick - buckets[i].tick,
+        --     change_rate))
 
         sum_weighted_change_rates = sum_weighted_change_rates + weight * change_rate
         sum_weights = sum_weights + weight
@@ -215,8 +215,8 @@ local function calculate_rate_of_change(signal)
 
     local rate_of_change = sum_weighted_change_rates / sum_weights
     sample_root.rate_of_change_per_min = rate_of_change
-    log(string.format("Final sum_weights: %d, sum_weighted_change_rates: %f. New change rate: %f/min",
-        sum_weights, sum_weighted_change_rates, rate_of_change))
+    -- log(string.format("Final sum_weights: %d, sum_weighted_change_rates: %f. New change rate: %f/min",
+    --     sum_weights, sum_weighted_change_rates, rate_of_change))
 
 end
 
