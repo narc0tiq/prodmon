@@ -1,8 +1,8 @@
 
-local my_combi = table.deepcopy(data.raw["constant-combinator"]["constant-combinator"])
-my_combi.name = "production-monitor"
-my_combi.item_slot_count = 0
-my_combi.sprites =
+local prodmon_combinator = table.deepcopy(data.raw["constant-combinator"]["constant-combinator"])
+prodmon_combinator.name = "production-monitor"
+prodmon_combinator.item_slot_count = 0
+prodmon_combinator.sprites =
 {
     north =
     {
@@ -40,13 +40,29 @@ my_combi.sprites =
         shift = {0.140625, 0.140625},
     },
 }
-my_combi.minable.result = "production-monitor"
+prodmon_combinator.minable.result = "production-monitor"
 
-local my_combi_item = table.deepcopy(data.raw.item["constant-combinator"])
-my_combi_item.name = "production-monitor"
-my_combi_item.place_result = "production-monitor"
+local prodmon_combinator_item = table.deepcopy(data.raw.item["constant-combinator"])
+prodmon_combinator_item.name = "production-monitor"
+prodmon_combinator_item.place_result = "production-monitor"
 
-data:extend{ my_combi, my_combi_item }
+local prodmon_combinator_recipe = {
+    type = "recipe",
+    name = "production-monitor",
+    enabled = false,
+    ingredients =
+    {
+        {"copper-cable", 5},
+        {"electronic-circuit", 4},
+    },
+    result = "production-monitor",
+}
+
+data:extend{ prodmon_combinator, prodmon_combinator_item, prodmon_combinator_recipe }
+
+local prodmon_combinator_effect = { type = "unlock-recipe", recipe = "production-monitor" }
+table.insert(data.raw.technology["circuit-network"].effects, prodmon_combinator_effect)
+
 
 local default_gui = data.raw["gui-style"].default
 

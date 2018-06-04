@@ -250,6 +250,8 @@ end
 
 
 function gui.on_click(e)
+    if not e.element or not e.element.valid then return end
+
     for pattern, handler in pairs(gui.patterns) do
         if e.element.name:match(pattern) then
             handler(e)

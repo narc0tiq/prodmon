@@ -6,5 +6,5 @@
   "author": "Octav \"narc\" Sandulescu",
   "contact": "factorio-mods@narc.ro",
   "description": "Provides a quick overview of anything circuit-connectable.",
-  "dependencies": ["base >= 0.16.0", "YARM >= 0.7.0"]
+  "dependencies": ["base >= 0.16.36", "YARM >= 0.7.0"]
 }
