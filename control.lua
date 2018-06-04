@@ -21,12 +21,11 @@ events.on_robot_built_entity = on_entity_built
 
 
 local function on_entity_remove(e)
-    log(string.format("Event %s", e.name))
     if e.entity.name ~= "production-monitor" then return end
 
     local success, name = combinators.name_entity(e.entity)
-    log(string.format("Got the name \"%s\"", name))
     if not name then return end
+    log(string.format("Have the combinator named \"%s\" to remove", name))
 
     gui.remove_data_rows(name)
     combinators.remove_by_name(name)
